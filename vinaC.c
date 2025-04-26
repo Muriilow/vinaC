@@ -3,18 +3,27 @@
 //Start: the first byte to move
 //End: The last byte to move
 //Ref: The byte that will hold the block of information
-void move(ulong start, ulong end, ulong ref, FILE* archive)
+void move(void* start, void* end, void* ref)
 {
-    ulong blockSize = end - start;
-    char* content = malloc(sizeof(blockSize));
+    size_t size;
 
-    //Movendo ponteiro para o inicio da info
-    fseek(archive, 0, start);
-    //Salvando a informacao no buffer
-    fread(content, sizeof(blockSize), 1, archive);
+    if(!start || !end || !ref)
+    {
+        fprintf(stderr, "Invalid pointers to move data\n");
+        return; 
+    }
 
-    fseek(archive, 0, ref);
-    fwrite(content, sizeof(blockSize), 1, archive);
+    uintptr_t startAddr = (uintptr_t)start;
+    uintptr_t endAddr = (uintptr_t)end;
+    
+    if(endAddr <= startAddr)
+    {
+        fprintf(stderr, "Error: Invalid memory region\n");
+        return; 
+    }
+
+    size = endAddr - startAddr;
+    memmove(ref, start, size);
 }
 
 void ExplainProg()
@@ -33,7 +42,46 @@ void ExplainProg()
 
 };
 
-void InsertArquive(FILE* arquive, FILE* binary)
+void InsertArquive(FILE* archive, FILE* binary, char* name)
 {
-    printf("tudo certo aqui\n");
+    struct Member member;
+    struct stat stats;
+    char* buffer = NULL;
+
+    int fd = fileno(archive);
+    
+    if(fd == -1 || fstat(fd, &stats) != 0)
+    {
+        fprintf(stderr, "Erro no stat/fd do arquivo\n");
+        return;
+    }
+
+    member.name = name;
+    //member.UID = stats.st_uid;
+    //member.pos
+    //member.origSize
+    //member.comprSize
+    //member.order
+    //member.modifData
+    member.origSize = stats.st_size;
+
+    buffer = (char*) malloc(member.origSize + 1);
+
+    size_t readBytes = fread(buffer, 1, member.origSize, archive);
+
+    printf("%d - %s - %s\n", member.origSize, buffer, name);
+
+    if(readBytes != (size_t)member.origSize)
+    {
+        fprintf(stderr, "Erro na na leitura do arquivo");
+        free(buffer);
+        buffer = NULL;
+
+        return;
+    }
+
+    fwrite(buffer, 1, member.origSize, binary);
+
+    free(buffer);
+    buffer = NULL;
 }
