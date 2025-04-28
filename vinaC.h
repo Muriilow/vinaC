@@ -13,7 +13,7 @@
 struct Member
 {
     //TODO: pos and order needs to be implemented
-    char*  name;
+    char name[64];
     uid_t UID;
     int pos;
     unsigned int origSize;
@@ -21,6 +21,16 @@ struct Member
     unsigned int order;
     time_t modifData;
 };
+struct Directory 
+{
+    int quantity;
+};
+
+//Start: the first byte to move
+//End: The last byte to move
+//Ref: The byte that will hold the block of information
+//Archive: the archive that will have its data modified
+void moveData(long int start, long int size, long int pos, FILE* binary);
 
 //Explain what the program does and how to use it.
 void ExplainProg();

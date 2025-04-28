@@ -2,13 +2,33 @@
 #include "TADs/lista.h"
 // -i, -p
 
+void createArchive(char* name)
+{
+    FILE* archive;
+    struct Directory header;
+
+    //Criando os arquivos
+    archive = fopen(name, "wb+");
+    if (archive == NULL)
+    {
+        fprintf(stderr, "Erro ao criar o arquivo");
+        return;
+    }
+    
+    //Colocando o diretorio no arquivo
+    header.quantity = 0;
+    fwrite(&header, 1, sizeof(struct Directory), archive);
+
+    fclose(archive);
+}
+
 int main(int argc, char **argv)
 {
     char nextOption;
     
     char* binaryName;
     FILE* binaryArchive;
-    int isArchive = 1;
+    FILE* archive;
 
     if(argc < 2)
     {
@@ -38,25 +58,32 @@ int main(int argc, char **argv)
                     return 1;
                 }
                 
-                printf("%s\n", binaryName);
+                //Se o arquivo nao existe, crie ele
+                if(access(binaryName, F_OK) == -1)
+                    createArchive(binaryName);
+
+                binaryArchive = fopen(binaryName, "rb+");
+                if(binaryArchive == NULL)
+                {
+                    fprintf(stderr, "Erro ao abrir o arquivo para editar\n");
+                    return 1;
+                }
 
                 while (optind < argc && argv[optind][0] != '-')
                 {
-                    char *arg;
-                    FILE* archive;
+                    char arg[64];
 
-                    arg = argv[optind++];
+                    strncpy(arg, argv[optind++], sizeof(arg) -1);
                     printf("Processing: %s\n", arg);
 
-                    //Abrindo os arquivos
-                    binaryArchive = fopen(binaryName, "ab");
                     archive = fopen(arg, "rb");
                     
                     InsertArquive(archive, binaryArchive, arg);
 
                     fclose(archive);
                 }
-
+                
+                //moveData(0, 20, 29, binaryArchive);
                 free(binaryName);
                 fclose(binaryArchive); 
                 break;

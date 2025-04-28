@@ -1,29 +1,23 @@
 #include "vinaC.h"
 
-//Start: the first byte to move
-//End: The last byte to move
-//Ref: The byte that will hold the block of information
-void move(void* start, void* end, void* ref)
+void printMember(struct Member member)
 {
-    size_t size;
+    printf("Name: %s \n", member.name);
+    printf("UID: %d\n", member.UID);
+    printf("pos: %d\n", member.pos);
+    printf("Original size: %d\n", member.origSize);
+    printf("Modified data: %d\n", member.modifData);
+}
+void moveData(long int start, long int size, long int pos, FILE* binary)
+{
+    char* buffer = (char*) calloc(size + 1, 1); //Maybe only size here?
 
-    if(!start || !end || !ref)
-    {
-        fprintf(stderr, "Invalid pointers to move data\n");
-        return; 
-    }
+    fseek(binary, start , SEEK_SET);
+    size_t readBytes = fread(buffer, 1, size + 1, binary);
 
-    uintptr_t startAddr = (uintptr_t)start;
-    uintptr_t endAddr = (uintptr_t)end;
-    
-    if(endAddr <= startAddr)
-    {
-        fprintf(stderr, "Error: Invalid memory region\n");
-        return; 
-    }
-
-    size = endAddr - startAddr;
-    memmove(ref, start, size);
+    fseek(binary, pos, SEEK_SET);
+    fwrite(buffer, 1, size + 1, binary);
+    free(buffer);
 }
 
 void ExplainProg()
@@ -46,30 +40,56 @@ void InsertArquive(FILE* archive, FILE* binary, char* name)
 {
     struct Member member;
     struct stat stats;
-    char* buffer = NULL;
-
+    struct Directory directory;
+    int memSize;
+    long pointerPos;
     int fd = fileno(archive);
+    char* buffer = NULL;
     
+    printf("%s", name);
+
     if(fd == -1 || fstat(fd, &stats) != 0)
     {
         fprintf(stderr, "Erro no stat/fd do arquivo\n");
         return;
     }
 
-    member.name = name;
-    //member.UID = stats.st_uid;
-    //member.pos
-    //member.origSize
-    //member.comprSize
-    //member.order
-    //member.modifData
+    fseek(binary, -(sizeof(struct Directory)) -1, SEEK_END);
+
+    fread(&directory, sizeof(struct Directory), 1, binary);
+    memSize = directory.quantity;
+    directory.quantity += 1;
+
+    memcpy(member.name, name, sizeof(member.name));
+
+    member.UID = stats.st_uid;
+    member.pos = memSize;
+    member.comprSize = stats.st_size;
+    member.modifData = stats.st_mtime;
     member.origSize = stats.st_size;
+    printMember(member);
 
-    buffer = (char*) malloc(member.origSize + 1);
+    pointerPos = ftell(binary);
+    int offset = pointerPos -(sizeof(struct Directory) + 1);
+    //Nesse pedaco de memoria eu estou ajustando o ponteiro do arquivo
+    //para escrever o membro antes do directory
+    fseek(binary, -(sizeof(struct Directory)) -1, SEEK_END);
+    if(pointerPos < 0)
+    {
+        fprintf(stderr, "Tamanho do arquivo menor que o esperado\n");
+        pointerPos = 0;
+    }
+    //Movendo os bytes do diretorio para frente
+    //moveData(pointerPos, sizeof(struct Directory), pointerPos + sizeof(struct Directory) + sizeof(struct Member), binary);
 
+    //Escrevendo o membro atras do diretorio
+    //fseek(binary, pointerPos, SEEK_SET);
+    fwrite(&member, sizeof(struct Member), 1, binary);
+    //Reescrevendo o diretorio
+    fwrite(&directory, sizeof(struct Directory), 1, binary);
+
+    buffer = (char*) malloc(member.origSize);
     size_t readBytes = fread(buffer, 1, member.origSize, archive);
-
-    printf("%d - %s - %s\n", member.origSize, buffer, name);
 
     if(readBytes != (size_t)member.origSize)
     {
@@ -80,6 +100,18 @@ void InsertArquive(FILE* archive, FILE* binary, char* name)
         return;
     }
 
+    memSize += 1;
+    //Movendo todo o conteudo do diretorio para frente e colocando o arquivo
+    fseek(binary, -(sizeof(struct Directory) + memSize * sizeof(struct Member)), SEEK_END);
+    pointerPos = ftell(binary);
+    //Movendo os bytes do diretorio para frente
+    moveData(pointerPos,
+            sizeof(struct Directory) + (memSize * sizeof(struct Member)),
+            pointerPos + member.origSize,
+            binary);
+
+    //Escrevendo conteudo do arquivo
+    fseek(binary, pointerPos, SEEK_SET);
     fwrite(buffer, 1, member.origSize, binary);
 
     free(buffer);
