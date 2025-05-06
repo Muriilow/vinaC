@@ -40,18 +40,10 @@ int main(int argc, char **argv)
     while ((nextOption = getopt(argc, argv, ":c:i:m:p:r:x:ha")) != -1) {
         switch (nextOption)
         {
-            case 'a':
-               // binaryArchive = fopen("teste.vc", "ab");
-               // if(stat("teste.vc", &stats) == 0)
-               // {
-               //     move(0, stats.st_size, stats.st_size+10);
-               // }
-                
-                break;
             case 'h':
                 ExplainProg();
                 return 0;
-            case 'i':
+            case 'p':
                 binaryName = strdup(optarg); //Alocacao dinamica
                 if(binaryName == NULL)
                 {
@@ -84,11 +76,33 @@ int main(int argc, char **argv)
                     fclose(archive);
                 }
                 
-                //moveData(0, 20, 29, binaryArchive);
                 free(binaryName);
                 fclose(binaryArchive); 
                 break;
+            
+            case 'c':
+                binaryName = strdup(optarg); //Alocacao dinamica
+                if(binaryName == NULL)
+                {
+                    fprintf(stderr, "Error when getting the argument\n");
+                    return 1;
+                }
+                if(access(binaryName, F_OK) == -1)
+                {
+                    fprintf(stderr, "The file doesn't exist");
+                    return 1;
+                }
 
+                binaryArchive = fopen(binaryName, "rb+");
+                if(binaryArchive == NULL)
+                {
+                    fprintf(stderr, "Erro ao abrir o arquivo para editar\n");
+                    return 1;
+                }
+
+                listMembers(binaryArchive);
+                free(binaryName);
+                break;
 //            case 'm':
 //                binaryName = strdup(optarg);
 //                printf("%s\n", binaryName);

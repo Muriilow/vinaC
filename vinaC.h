@@ -38,4 +38,7 @@ void ExplainProg();
 
 //Insert the arquive content into the binary and its information.
 void InsertArquive(FILE* archive, FILE* binary, char* name);
+
+//List all the members with its respective informations
+void listMembers(FILE* binary);
 #endif

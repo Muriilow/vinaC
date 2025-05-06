@@ -3,14 +3,14 @@
 void printMember(struct Member member)
 {
     printf("Name: %s \n", member.name);
+    printf("Position: %d\n", member.pos);
     printf("UID: %d\n", member.UID);
-    printf("pos: %d\n", member.pos);
     printf("Original size: %d\n", member.origSize);
     printf("Modified data: %d\n", member.modifData);
 }
 void moveData(long int start, long int size, long int pos, FILE* binary)
 {
-    char* buffer = (char*) calloc(size, 1); //Maybe only size here?
+    char* buffer = (char*) malloc(size); //Maybe only size here?
 
     fseek(binary, start , SEEK_SET);
     size_t readBytes = fread(buffer, 1, size, binary);
@@ -19,6 +19,27 @@ void moveData(long int start, long int size, long int pos, FILE* binary)
     fwrite(buffer, 1, size, binary);
     free(buffer);
 }
+void listMembers(FILE* binary)
+{
+    struct Directory directory;
+    struct Member member;
+    int memSize;
+
+    fseek(binary, -(sizeof(struct Directory)), SEEK_END);
+
+    fread(&directory, sizeof(struct Directory), 1, binary);
+    memSize = directory.quantity;
+
+    fseek(binary, -(sizeof(struct Directory) + memSize * sizeof(struct Member)), SEEK_END);
+    for(int i = 0; i < memSize; i++)
+    {
+        fread(&member, sizeof(struct Member), 1, binary);
+        printf("---------------------------\n");
+        printMember(member);
+    }
+    printf("---------------------------\n");
+
+}
 
 void ExplainProg()
 {
@@ -26,14 +47,12 @@ void ExplainProg()
         printf("VinaC, the program that groups and compresses multiple files\n");
         printf("%-50s", "Usage: ./vinaC [command] [arquive]\n");
         printf("\n");
-        printf("%-10s %-30s %-60s\n", "\"-ip\"", "[arquive] [member1 ..]", "Add one or more members without compression to the arquive.vc");
-        printf("%-10s %-30s %-60s\n", "\"-ic\"", "[arquive] [member1 ..]", "Add one or more members with compression to the arquive.vc");
+        printf("%-10s %-30s %-60s\n", "\"-p\"", "[arquive] [member1 ..]", "Add one or more members without compression to the arquive.vc");
+        printf("%-10s %-30s %-60s\n", "\"-i\"", "[arquive] [member1 ..]", "Add one or more members with compression to the arquive.vc");
         printf("%-10s %-30s %-60s\n", "\"-s\"", "[arquive] [member]", "Moves the indicated member to after the existing target member in the archive");
         printf("%-10s %-30s %-60s\n", "\"-x\"", "[arquive] [member1 ..]", "Extract the indicated members on the archive.vc, if there are no members indicated, extract all");
         printf("%-10s %-30s %-60s\n", "\"-r\"", "[arquive] [member1 ..]", "Remove the indicated members of the archive");
         printf("%-10s %-30s %-60s\n", "\"-c\"", "[arquive]", "List every member of the archive in order, including properties of each member");
-
-
 };
 
 void InsertArquive(FILE* archive, FILE* binary, char* name)
@@ -72,40 +91,65 @@ void InsertArquive(FILE* archive, FILE* binary, char* name)
     for(int i = 0; i < memSize; i++)
     {
         struct Member tmp;
-        unsigned int sizeDiff;
+        int sizeDiff;
         int firstPointer, secPointer;
         
-        fread(&tmp, sizeof(struct Member), 1, binary);
         pointerPos = ftell(binary);
+        fread(&tmp, sizeof(struct Member), 1, binary);
 
         //Se o arquivo ja existe no binario 
         if(strcmp(name, tmp.name) == 0)
         {
             int size;
             
-            printf("Repetido\n");
             sizeDiff = member.origSize - tmp.origSize;
-            firstPointer = totalSize;
-            
-            //Se o tamanho do arquivo diminuir da problema
-            fseek(binary, 0, SEEK_END);
-            secPointer = ftell(binary);
-            size = secPointer - firstPointer;
-            moveData(firstPointer, size, firstPointer + sizeDiff, binary);
+            if(sizeDiff >= 0)
+            {
+                firstPointer = totalSize;
 
-            fseek(binary, totalSize, SEEK_SET);
-            buffer = (char*) malloc(member.origSize);
-            fread(buffer, 1, member.origSize, archive);
+                fseek(binary, 0, SEEK_END);
+                secPointer = ftell(binary);
+                size = secPointer - firstPointer;
+                moveData(firstPointer, size, firstPointer + sizeDiff, binary);
 
-            fwrite(buffer, member.origSize, 1, binary);
+                fseek(binary, totalSize, SEEK_SET);
+                buffer = (char*) malloc(member.origSize);
+                fread(buffer, 1, member.origSize, archive);
 
+                fwrite(buffer, member.origSize, 1, binary);
 
-            free(buffer);
-            buffer = NULL;
+                free(buffer);
+                buffer = NULL;
+            }
+            else
+            {
+                totalSize += tmp.origSize;
+                firstPointer = totalSize;
 
-            printMember(tmp);
-            printMember(member);
-            tmp = member;
+                fseek(binary, 0, SEEK_END);
+                secPointer = ftell(binary);
+                size = secPointer - firstPointer;
+
+                fseek(binary, firstPointer + sizeDiff, SEEK_SET);
+                int thirdPointer = ftell(binary);
+                printf("%d - %d - %d\n", sizeDiff, firstPointer + sizeDiff, firstPointer);
+                moveData(firstPointer, size, thirdPointer, binary);
+
+                fseek(binary, totalSize - tmp.origSize, SEEK_SET);
+                buffer = (char*) malloc(member.origSize);
+                fread(buffer, 1, member.origSize, archive);
+
+                fwrite(buffer, member.origSize, 1, binary);
+
+                //We need to truncate the archive now
+                free(buffer);
+                buffer = NULL;
+            }
+            //We already updated the new archive
+            //Let's update the struct member
+            fseek(binary, pointerPos + sizeDiff, SEEK_SET);
+            fwrite(&member, sizeof(struct Member), 1, binary);
+
             return;
         }
         else
