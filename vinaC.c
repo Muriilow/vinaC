@@ -10,13 +10,13 @@ void printMember(struct Member member)
 }
 void moveData(long int start, long int size, long int pos, FILE* binary)
 {
-    char* buffer = (char*) calloc(size + 1, 1); //Maybe only size here?
+    char* buffer = (char*) calloc(size, 1); //Maybe only size here?
 
     fseek(binary, start , SEEK_SET);
-    size_t readBytes = fread(buffer, 1, size + 1, binary);
+    size_t readBytes = fread(buffer, 1, size, binary);
 
     fseek(binary, pos, SEEK_SET);
-    fwrite(buffer, 1, size + 1, binary);
+    fwrite(buffer, 1, size, binary);
     free(buffer);
 }
 
@@ -38,6 +38,7 @@ void ExplainProg()
 
 void InsertArquive(FILE* archive, FILE* binary, char* name)
 {
+    unsigned int totalSize = 0;
     struct Member member;
     struct stat stats;
     struct Directory directory;
@@ -46,44 +47,79 @@ void InsertArquive(FILE* archive, FILE* binary, char* name)
     int fd = fileno(archive);
     char* buffer = NULL;
     
-    printf("%s", name);
-
     if(fd == -1 || fstat(fd, &stats) != 0)
     {
         fprintf(stderr, "Erro no stat/fd do arquivo\n");
         return;
     }
 
-    fseek(binary, -(sizeof(struct Directory)) -1, SEEK_END);
+    fseek(binary, -(sizeof(struct Directory)), SEEK_END);
 
     fread(&directory, sizeof(struct Directory), 1, binary);
     memSize = directory.quantity;
     directory.quantity += 1;
+    printf("%d - %c\n", directory.quantity, directory.name);
 
     memcpy(member.name, name, sizeof(member.name));
-
     member.UID = stats.st_uid;
     member.pos = memSize;
     member.comprSize = stats.st_size;
     member.modifData = stats.st_mtime;
     member.origSize = stats.st_size;
-    printMember(member);
+
+    fseek(binary, -(sizeof(struct Directory) + memSize * sizeof(struct Member)), SEEK_END);
+
+    for(int i = 0; i < memSize; i++)
+    {
+        struct Member tmp;
+        unsigned int sizeDiff;
+        int firstPointer, secPointer;
+        
+        fread(&tmp, sizeof(struct Member), 1, binary);
+        pointerPos = ftell(binary);
+
+        //Se o arquivo ja existe no binario 
+        if(strcmp(name, tmp.name) == 0)
+        {
+            int size;
+            
+            printf("Repetido\n");
+            sizeDiff = member.origSize - tmp.origSize;
+            firstPointer = totalSize;
+            
+            //Se o tamanho do arquivo diminuir da problema
+            fseek(binary, 0, SEEK_END);
+            secPointer = ftell(binary);
+            size = secPointer - firstPointer;
+            moveData(firstPointer, size, firstPointer + sizeDiff, binary);
+
+            fseek(binary, totalSize, SEEK_SET);
+            buffer = (char*) malloc(member.origSize);
+            fread(buffer, 1, member.origSize, archive);
+
+            fwrite(buffer, member.origSize, 1, binary);
+
+
+            free(buffer);
+            buffer = NULL;
+
+            printMember(tmp);
+            printMember(member);
+            tmp = member;
+            return;
+        }
+        else
+            printf("nao sao iguais\n", tmp.name);
+
+        totalSize += tmp.origSize;
+    }
 
     pointerPos = ftell(binary);
-    int offset = pointerPos -(sizeof(struct Directory) + 1);
     //Nesse pedaco de memoria eu estou ajustando o ponteiro do arquivo
     //para escrever o membro antes do directory
-    fseek(binary, -(sizeof(struct Directory)) -1, SEEK_END);
-    if(pointerPos < 0)
-    {
-        fprintf(stderr, "Tamanho do arquivo menor que o esperado\n");
-        pointerPos = 0;
-    }
-    //Movendo os bytes do diretorio para frente
-    //moveData(pointerPos, sizeof(struct Directory), pointerPos + sizeof(struct Directory) + sizeof(struct Member), binary);
+    fseek(binary, -(sizeof(struct Directory)), SEEK_END);
 
     //Escrevendo o membro atras do diretorio
-    //fseek(binary, pointerPos, SEEK_SET);
     fwrite(&member, sizeof(struct Member), 1, binary);
     //Reescrevendo o diretorio
     fwrite(&directory, sizeof(struct Directory), 1, binary);

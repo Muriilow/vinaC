@@ -17,6 +17,7 @@ void createArchive(char* name)
     
     //Colocando o diretorio no arquivo
     header.quantity = 0;
+    header.name = 'e';
     fwrite(&header, 1, sizeof(struct Directory), archive);
 
     fclose(archive);

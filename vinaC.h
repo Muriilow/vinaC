@@ -13,7 +13,7 @@
 struct Member
 {
     //TODO: pos and order needs to be implemented
-    char name[64];
+    char name[16];
     uid_t UID;
     int pos;
     unsigned int origSize;
@@ -23,6 +23,7 @@ struct Member
 };
 struct Directory 
 {
+    char name;
     int quantity;
 };
 
