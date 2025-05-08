@@ -71,7 +71,7 @@ int main(int argc, char **argv)
 
                     archive = fopen(arg, "rb");
                     
-                    InsertArquive(archive, binaryArchive, arg);
+                    InsertNormalArchive(archive, binaryArchive, arg);
 
                     fclose(archive);
                 }
@@ -96,154 +96,50 @@ int main(int argc, char **argv)
                 binaryArchive = fopen(binaryName, "rb+");
                 if(binaryArchive == NULL)
                 {
-                    fprintf(stderr, "Erro ao abrir o arquivo para editar\n");
+                    fprintf(stderr, "Error when opening the binary archive\n");
                     return 1;
                 }
 
-                listMembers(binaryArchive);
+                ListMembers(binaryArchive);
                 free(binaryName);
+                fclose(binaryArchive); 
                 break;
-//            case 'm':
-//                binaryName = strdup(optarg);
-//                printf("%s\n", binaryName);
-//
-//                while (optind < argc && argv[optind][0] != '-')
-//                {
-//                    char *arg;
-//                    FILE* archive;
-//
-//                    arg = argv[optind++];
-//                    printf("Processing: %s\n", arg);
-//
-//
-//                    binaryArchive = fopen(binaryName, "ab");
-//                    archive = fopen(arg, "rb");
-//                    
-//                    InsertArquive(binaryArchive, archive);
-//                    
-//                    fclose(binaryArchive);
-//                    fclose(archive);
-//
-//                    archive = NULL;
-//                    binaryArchive = NULL;
-//                }
-//                break;
-//
-//            case 'c':
-//                binaryName = strdup(optarg);
-//                printf("%s\n", binaryName);
-//
-//                while (optind < argc && argv[optind][0] != '-')
-//                {
-//                    char *arg;
-//                    FILE* archive;
-//
-//                    arg = argv[optind++];
-//                    printf("Processing: %s\n", arg);
-//
-//
-//                    binaryArchive = fopen(binaryName, "ab");
-//                    archive = fopen(arg, "rb");
-//                    
-//                    InsertArquive(binaryArchive, archive);
-//                    
-//                    fclose(binaryArchive);
-//                    fclose(archive);
-//
-//                    archive = NULL;
-//                    binaryArchive = NULL;
-//                }
-//                break;
-//
-//            case 'r':
-//                binaryName = strdup(optarg);
-//                printf("%s\n", binaryName);
-//
-//                while (optind < argc && argv[optind][0] != '-')
-//                {
-//                    char *arg;
-//                    FILE* archive;
-//
-//                    arg = argv[optind++];
-//                    printf("Processing: %s\n", arg);
-//
-//
-//                    binaryArchive = fopen(binaryName, "ab");
-//                    archive = fopen(arg, "rb");
-//                    
-//                    InsertArquive(binaryArchive, archive);
-//                    
-//                    fclose(binaryArchive);
-//                    fclose(archive);
-//
-//                    archive = NULL;
-//                    binaryArchive = NULL;
-//                }
-//                break;
-//
-//            case 'x':
-//                binaryName = strdup(optarg);
-//                printf("%s\n", binaryName);
-//
-//                while (optind < argc && argv[optind][0] != '-')
-//                {
-//                    char *arg;
-//                    FILE* archive;
-//
-//                    arg = argv[optind++];
-//                    printf("Processing: %s\n", arg);
-//
-//
-//                    binaryArchive = fopen(binaryName, "ab");
-//                    archive = fopen(arg, "rb");
-//                    
-//                    InsertArquive(binaryArchive, archive);
-//                    
-//                    fclose(binaryArchive);
-//                    fclose(archive);
-//
-//                    archive = NULL;
-//                    binaryArchive = NULL;
-//                }
-//                break;
-//
-//            case 'p':
-//                binaryName = strdup(optarg);
-//                printf("%s\n", binaryName);
-//
-//                while (optind < argc && argv[optind][0] != '-')
-//                {
-//                    char *arg;
-//                    FILE* archive;
-//
-//                    arg = argv[optind++];
-//                    printf("Processing: %s\n", arg);
-//
-//
-//                    binaryArchive = fopen(binaryName, "ab");
-//                    archive = fopen(arg, "rb");
-//                    
-//                    InsertArquive(binaryArchive, archive);
-//                    
-//                    fclose(binaryArchive);
-//                    fclose(archive);
-//
-//                    archive = NULL;
-//                    binaryArchive = NULL;
-//                }
-//                break;
-//
-//            case ':':
-//                fprintf(stderr, "Option -%c requires an operand\n", optopt);
-//                break;
-//
-//            case '?':
-//                fprintf(stderr,"Unrecognized option: -%c\n", optopt);
-//                break;
-//
-//            default:
-//                printf("Usage: %s -h to display information about the program\n", argv[0]);
-//                return 1;
+            case 'i':
+                binaryName = strdup(optarg); //Alocacao dinamica
+                if(binaryName == NULL)
+                {
+                    fprintf(stderr, "Error when getting the argument\n");
+                    return 1;
+                }
+                
+                //Se o arquivo nao existe, crie ele
+                if(access(binaryName, F_OK) == -1)
+                    createArchive(binaryName);
+
+                binaryArchive = fopen(binaryName, "rb+");
+                if(binaryArchive == NULL)
+                {
+                    fprintf(stderr, "Error when opening the binary archive\n");
+                    return 1;
+                }
+
+                while (optind < argc && argv[optind][0] != '-')
+                {
+                    char arg[64];
+
+                    strncpy(arg, argv[optind++], sizeof(arg) -1);
+                    printf("Processing: %s\n", arg);
+
+                    archive = fopen(arg, "rb");
+                    
+                    InsertCompressedArchive(archive, binaryArchive, arg);
+
+                    fclose(archive);
+                    
+                }
+                free(binaryName);
+                fclose(binaryArchive); 
+                break;
         }
     }
 }

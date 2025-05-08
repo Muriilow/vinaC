@@ -31,14 +31,17 @@ struct Directory
 //End: The last byte to move
 //Ref: The byte that will hold the block of information
 //Archive: the archive that will have its data modified
-void moveData(long int start, long int size, long int pos, FILE* binary);
+void MoveData(long int start, long int size, long int pos, FILE* binary);
 
 //Explain what the program does and how to use it.
 void ExplainProg();
 
 //Insert the arquive content into the binary and its information.
-void InsertArquive(FILE* archive, FILE* binary, char* name);
+void InsertNormalArchive(FILE* archive, FILE* binary, char* name);
+
+
+void InsertCompressedArchive(FILE* archive, FILE* binary, char* name);
 
 //List all the members with its respective informations
-void listMembers(FILE* binary);
+void ListMembers(FILE* binary);
 #endif
