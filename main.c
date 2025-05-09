@@ -1,8 +1,9 @@
 #include "vinaC.h"
 #include "TADs/lista.h"
 // -i, -p
+//TODO: Implementar funcoes de checagem de erro
 
-void createArchive(char* name)
+void CreateArchive(char* name)
 {
     FILE* archive;
     struct Directory header = {0};
@@ -23,6 +24,38 @@ void createArchive(char* name)
     fclose(archive);
 }
 
+FILE* OpenArchive(char* name, int toCreate)
+{
+    FILE* binaryArchive;
+
+    if(name == NULL)
+    {
+        fprintf(stderr, "Error when getting the argument\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    //Se o arquivo nao existe, crie ele
+    if(access(name, F_OK) == -1)
+    {
+        if(toCreate)
+            CreateArchive(name);
+        else
+        {
+            fprintf(stderr, "The file doesn't exist\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    binaryArchive = fopen(name, "rb+");
+    if(binaryArchive == NULL)
+    {
+        fprintf(stderr, "Error when opening the binary archive\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    return binaryArchive;
+}
+
 int main(int argc, char **argv)
 {
     char nextOption;
@@ -37,7 +70,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    while ((nextOption = getopt(argc, argv, ":c:i:m:p:r:x:ha")) != -1) {
+    while ((nextOption = getopt(argc, argv, ":c:i:m:p:r:x:h")) != -1) {
         switch (nextOption)
         {
             case 'h':
@@ -45,22 +78,7 @@ int main(int argc, char **argv)
                 return 0;
             case 'p':
                 binaryName = strdup(optarg); //Alocacao dinamica
-                if(binaryName == NULL)
-                {
-                    fprintf(stderr, "Erro ao pegar argumento\n");
-                    return 1;
-                }
-                
-                //Se o arquivo nao existe, crie ele
-                if(access(binaryName, F_OK) == -1)
-                    createArchive(binaryName);
-
-                binaryArchive = fopen(binaryName, "rb+");
-                if(binaryArchive == NULL)
-                {
-                    fprintf(stderr, "Erro ao abrir o arquivo para editar\n");
-                    return 1;
-                }
+                binaryArchive = OpenArchive(binaryName, 1);
 
                 while (optind < argc)
                 {
@@ -82,23 +100,7 @@ int main(int argc, char **argv)
             
             case 'c':
                 binaryName = strdup(optarg); //Alocacao dinamica
-                if(binaryName == NULL)
-                {
-                    fprintf(stderr, "Error when getting the argument\n");
-                    return 1;
-                }
-                if(access(binaryName, F_OK) == -1)
-                {
-                    fprintf(stderr, "The file doesn't exist");
-                    return 1;
-                }
-
-                binaryArchive = fopen(binaryName, "rb+");
-                if(binaryArchive == NULL)
-                {
-                    fprintf(stderr, "Error when opening the binary archive\n");
-                    return 1;
-                }
+                binaryArchive = OpenArchive(binaryName, 0);
 
                 ListMembers(binaryArchive);
                 free(binaryName);
@@ -106,22 +108,7 @@ int main(int argc, char **argv)
                 break;
             case 'i':
                 binaryName = strdup(optarg); //Alocacao dinamica
-                if(binaryName == NULL)
-                {
-                    fprintf(stderr, "Error when getting the argument\n");
-                    return 1;
-                }
-                
-                //Se o arquivo nao existe, crie ele
-                if(access(binaryName, F_OK) == -1)
-                    createArchive(binaryName);
-
-                binaryArchive = fopen(binaryName, "rb+");
-                if(binaryArchive == NULL)
-                {
-                    fprintf(stderr, "Error when opening the binary archive\n");
-                    return 1;
-                }
+                binaryArchive = OpenArchive(binaryName, 1);
 
                 while (optind < argc)
                 {
@@ -137,30 +124,13 @@ int main(int argc, char **argv)
                     fclose(archive);
                     
                 }
+
                 free(binaryName);
                 fclose(binaryArchive); 
                 break;
             case 'x':
                 binaryName = strdup(optarg); //Alocacao dinamica
-                if(binaryName == NULL)
-                {
-                    fprintf(stderr, "Error when getting the argument\n");
-                    return 1;
-                }
-                
-                //Se o arquivo nao existe, crie ele
-                if(access(binaryName, F_OK) == -1)
-                {
-                    fprintf(stderr, "The file doesn't exist");
-                    return 1;
-                }
-
-                binaryArchive = fopen(binaryName, "rb+");
-                if(binaryArchive == NULL)
-                {
-                    fprintf(stderr, "Error when opening the binary archive\n");
-                    return 1;
-                }
+                binaryArchive = OpenArchive(binaryName, 0);
                 //No arguments
                 if (optind == argc)
                 {
@@ -192,7 +162,7 @@ int main(int argc, char **argv)
                             return 1;
                         }
 
-                        printMember(tmp);
+                        PrintMember(tmp);
                         ExtractArchive(tmp, binaryArchive);
 
                         fclose(archive);
@@ -202,6 +172,35 @@ int main(int argc, char **argv)
                 free(binaryName);
                 fclose(binaryArchive);
                 break;
+            case 'm':
+                int argCount;
+                char member1[64];
+                char member2[64]; 
+
+                argCount = 0;
+                binaryName = strdup(optarg); //Alocacao dinamica
+                binaryArchive = OpenArchive(binaryName, 0);
+
+                if(optind < argc)
+                {
+                    strncpy(member1, argv[optind++], sizeof(member1) -1);
+                    argCount++;
+                    if(optind < argc)
+                    {
+                        strncpy(member2, argv[optind++], sizeof(member2) -1);
+                        argCount++;
+                    }
+                }
+                printf("%s - %s\n", member1, member2);
+                printf("%d\n", argCount);
+
+                if(argCount == 1)
+                    MoveMembers(member1, NULL, binaryArchive);
+                if(argCount == 2)
+                    MoveMembers(member1, member2, binaryArchive);
+
+                free(binaryName);
+                fclose(binaryArchive);
         }
     }
 }

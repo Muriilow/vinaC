@@ -48,7 +48,8 @@ void ListMembers(FILE* binary);
 int CheckArchive(char* name, FILE* binary, struct Member* member);
 
 void ExtractAllArchives(FILE* binary);
-void printMember(struct Member member);
+void PrintMember(struct Member member);
 void ExtractArchive(struct Member member, FILE* binary);
 
+void MoveMembers(char* name1, char* name2, FILE* binary);
 #endif

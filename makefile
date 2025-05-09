@@ -6,7 +6,7 @@ TARGET = vina
 SRCS = main.c vinaC.c
 
 all:
-	gcc main.c vinaC.c -o vina
+	gcc main.c vinaC.c lz.c -o vina
 
 	#$(CC) $(CFLAGS) main.c vinaC.c -o $(TARGET)
 

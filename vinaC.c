@@ -1,6 +1,6 @@
 #include "vinaC.h"
 #include "lz.h"
-void printMember(struct Member member)
+void PrintMember(struct Member member)
 {
     printf("Name: %s \n", member.name);
     printf("Order: %d\n", member.order);
@@ -46,13 +46,185 @@ int CheckArchive(char* name, FILE* binary, struct Member *member)
         if(strcmp(name, tmp.name) == 0)
         {
             *member = tmp; 
-            printf("Archive exists!\n");
             return 0;
         }
     }
     
-    printf("Archive doesn't exists...\n");
-    return -1;
+    fprintf(stderr, "Archive doesn't exists...\n");
+    exit(EXIT_FAILURE);
+}
+void MoveMembers(char* name1, char* name2, FILE* binary)
+{
+    struct Member member1 = {0};
+    struct Member member2 = {0};
+    struct Directory directory = {0};
+    int member1Pos, member2Pos, firstStruct, struct1Pos, struct2Pos;
+    int endBinary, fdBinary, offset, isAfter;
+    unsigned char *buffer;
+
+    //Check if the members exist and getting the information
+    if(CheckArchive(name1, binary, &member1) == 0)
+    {
+        //PrintMember(member1);
+        if(name2 == NULL)
+            printf("nulo\n");
+        else
+        {
+            if(CheckArchive(name2, binary, &member2) == 0)
+            PrintMember(member2);
+        }
+    }
+    
+    fdBinary = fileno(binary);
+
+    fseek(binary, 0, SEEK_END);
+    endBinary = ftell(binary);
+    //getting the information
+    fseek(binary, member1.pos, SEEK_SET);
+    member1Pos = ftell(binary);
+
+    buffer = (unsigned char*) malloc(member1.size);
+    fread(buffer, member1.size, 1, binary);
+
+    fseek(binary, -(sizeof(struct Directory)), SEEK_END);
+    fread(&directory, sizeof(struct Directory), 1, binary);
+
+    fseek(binary, -(sizeof(struct Directory) + directory.quantity * sizeof(struct Member)), SEEK_END);
+    firstStruct = ftell(binary);
+
+    //If the user has passed an membr to move infront
+    if(name2 != NULL)
+    {
+        //Atualizando o conteudo 
+        offset = member2.pos + member2.size;
+        MoveData(offset, endBinary - offset, offset + member1.size, binary);
+
+        fseek(binary, offset, SEEK_SET);
+        fwrite(buffer, member1.size, 1, binary);
+        fseek(binary, 0, SEEK_END);
+        endBinary = ftell(binary);
+
+        offset = member1.pos + member1.size*2;
+        MoveData(offset, endBinary - offset, member1.pos + member1.size, binary);
+
+        ftruncate(fdBinary, endBinary - member1.size);
+
+        //Atualizando as structs
+        fseek(binary, -(sizeof(struct Directory) + directory.quantity * sizeof(struct Member)), SEEK_END);
+        isAfter = 0;
+        for(int i = 0; i < directory.quantity; i++)
+        {
+
+            struct Member tmp;
+
+            fread(&tmp, sizeof(struct Member), 1, binary);
+
+            //Se o arquivo ja existe no binario 
+            if(strcmp(member2.name, tmp.name) == 0)
+            {
+                struct2Pos = ftell(binary);
+                isAfter =1;
+                continue;
+            }
+            if(strcmp(member1.name, tmp.name) == 0)
+            {
+                struct1Pos = ftell(binary);
+                continue;
+            }
+            if(isAfter == 1)
+            {
+                tmp.order++;
+                tmp.pos += member1.size;
+                PrintMember(tmp);
+                fseek(binary, -sizeof(struct Member), SEEK_CUR);
+                fwrite(&tmp, sizeof(struct Member), 1, binary);
+            }
+        }
+        
+        member1.pos = member2.pos + member2.size;
+        member1.order = member2.order + 1;
+        fseek(binary, 0, SEEK_END);
+        endBinary = ftell(binary);
+
+        //My archive got bigger, so I need to update the pointers 
+        MoveData(struct2Pos, endBinary - struct2Pos, struct2Pos + sizeof(struct Member), binary);
+
+        //The end pointer also needs to be updated
+        fseek(binary, 0, SEEK_END);
+        endBinary = ftell(binary);
+
+        struct1Pos += sizeof(struct Member);
+
+        fseek(binary, struct2Pos, SEEK_SET);
+        fwrite(&member1, sizeof(struct Member), 1, binary);
+
+        MoveData(struct1Pos, endBinary - struct1Pos, struct1Pos - sizeof(struct Member), binary);
+        ftruncate(fdBinary, endBinary - sizeof(struct Member));
+        
+        free(buffer);
+        return;
+    }
+
+    //Moving the data to the start of the function 
+    MoveData(0, endBinary, member1.size, binary);
+
+    fseek(binary, 0, SEEK_END);
+    endBinary = ftell(binary);
+
+    fseek(binary, 0, SEEK_SET);
+    fwrite(buffer, member1.size, 1, binary);
+
+    offset = member1.pos + member1.size*2;
+    MoveData(offset, endBinary - offset, offset - member1.size, binary);
+    
+    ftruncate(fdBinary, endBinary - member1.size);
+    
+    //Updating the structs 
+    fseek(binary, -(sizeof(struct Directory) + directory.quantity * sizeof(struct Member)), SEEK_END);
+    for(int i = 0; i < directory.quantity; i++)
+    {
+        struct Member tmp;
+        fread(&tmp, sizeof(struct Member), 1, binary);
+
+        //Se o arquivo ja existe no binario 
+        if(strcmp(member1.name, tmp.name) == 0)
+        {
+            member1.pos = 0;
+            member1.order = 0;
+            struct1Pos = ftell(binary);
+            PrintMember(member1);
+            break;
+        }
+        else
+        {
+            tmp.order++;
+            tmp.pos += member1.size;
+            PrintMember(tmp);
+            fseek(binary, -sizeof(struct Member), SEEK_CUR);
+            fwrite(&tmp, sizeof(struct Member), 1, binary);
+        }
+    }
+
+    fseek(binary, 0, SEEK_END);
+    endBinary = ftell(binary);
+
+    //My archive got bigger, so I need to update the pointers 
+    MoveData(firstStruct, endBinary - firstStruct, firstStruct + sizeof(struct Member), binary);
+    struct1Pos += sizeof(struct Member);
+
+    //The end pointer also needs to be updated
+    fseek(binary, 0, SEEK_END);
+    endBinary = ftell(binary);
+     
+
+    fseek(binary, firstStruct, SEEK_SET);
+    fwrite(&member1, sizeof(struct Member), 1, binary);
+
+    MoveData(struct1Pos, endBinary - struct1Pos, struct1Pos - sizeof(struct Member), binary);
+
+    ftruncate(fdBinary, endBinary - sizeof(struct Member));
+
+    free(buffer);
 }
 void ExtractAllArchives(FILE* binary)
 {
@@ -73,13 +245,14 @@ void ExtractAllArchives(FILE* binary)
 
         pointerPos = ftell(binary);
 
-        printMember(tmp);
+        PrintMember(tmp);
         fprintf(stderr, "%s\n", tmp.name);
 
         ExtractArchive(tmp, binary);
     }
 
 }
+
 void ExtractArchive(struct Member member, FILE* binary)
 {
     struct Directory directory = {0};
@@ -147,7 +320,7 @@ void ListMembers(FILE* binary)
     {
         fread(&member, sizeof(struct Member), 1, binary);
         printf("---------------------------\n");
-        printMember(member);
+        PrintMember(member);
     }
     printf("---------------------------\n");
 
@@ -251,6 +424,7 @@ void InsertCompressedArchive(FILE* archive, FILE* binary, char* name)
     if(comprData >= stats.st_size)
     {
         //Armazenar os dados descomprimidos 
+        fseek(archive, 0, SEEK_SET);
         InsertNormalArchive(archive, binary, name);
         return;
     };
