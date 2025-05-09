@@ -17,7 +17,7 @@ struct Member
     uid_t UID;
     int pos;
     unsigned int origSize;
-    unsigned int comprSize;
+    unsigned int size;
     unsigned int order;
     time_t modifData;
 };
@@ -39,9 +39,16 @@ void ExplainProg();
 //Insert the arquive content into the binary and its information.
 void InsertNormalArchive(FILE* archive, FILE* binary, char* name);
 
+void InsertArchive(void* buffer, FILE* binary, struct Member member);
 
 void InsertCompressedArchive(FILE* archive, FILE* binary, char* name);
 
 //List all the members with its respective informations
 void ListMembers(FILE* binary);
+int CheckArchive(char* name, FILE* binary, struct Member* member);
+
+void ExtractAllArchives(FILE* binary);
+void printMember(struct Member member);
+void ExtractArchive(struct Member member, FILE* binary);
+
 #endif
