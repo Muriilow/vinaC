@@ -201,6 +201,24 @@ int main(int argc, char **argv)
 
                 free(binaryName);
                 fclose(binaryArchive);
+                break;
+            case 'r':
+                binaryName = strdup(optarg); //Alocacao dinamica
+                binaryArchive = OpenArchive(binaryName, 0);
+
+                while (optind < argc)
+                {
+                    char arg[64];
+
+                    strncpy(arg, argv[optind++], sizeof(arg) -1);
+                    printf("Processing: %s\n", arg);
+
+                    RemoveMember(arg, binaryArchive);
+                }
+                
+                free(binaryName);
+                fclose(binaryArchive); 
+                break;
         }
     }
 }

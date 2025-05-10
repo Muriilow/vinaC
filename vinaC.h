@@ -52,4 +52,5 @@ void PrintMember(struct Member member);
 void ExtractArchive(struct Member member, FILE* binary);
 
 void MoveMembers(char* name1, char* name2, FILE* binary);
+void RemoveMember(char* name, FILE* binary);
 #endif

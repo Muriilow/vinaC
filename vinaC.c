@@ -2,13 +2,26 @@
 #include "lz.h"
 void PrintMember(struct Member member)
 {
+    char buffer[80];
+    struct tm *timeInfo = localtime(&member.modifData);
+
+    if (timeInfo == NULL) 
+    {
+        fprintf(stderr, "Error formating the modification time\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // Form 
+    strftime(buffer, sizeof(buffer), "%d/%m/%Y %H:%M:%S", timeInfo);
+
+
     printf("Name: %s \n", member.name);
     printf("Order: %d\n", member.order);
     printf("Position: %d\n", member.pos);
     printf("UID: %d\n", member.UID);
     printf("Original size: %d\n", member.origSize);
     printf("Disk size: %d\n", member.size);
-    printf("Modified data: %d\n", member.modifData);
+    printf("Modified data: %s\n", buffer);
 }
 
 void MoveData(long int start, long int size, long int pos, FILE* binary)
@@ -52,6 +65,69 @@ int CheckArchive(char* name, FILE* binary, struct Member *member)
     
     fprintf(stderr, "Archive doesn't exists...\n");
     exit(EXIT_FAILURE);
+}
+
+void RemoveMember(char* name, FILE* binary)
+{
+    struct Member member = {0};
+    struct Directory directory = {0};
+    int fdBinary, endBinary, isAfter, structPos, offset;
+
+
+    if(CheckArchive(name, binary, &member) != 0)
+    {
+        fprintf(stderr, "This member doesn't exist.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    fdBinary = fileno(binary);
+
+    fseek(binary, 0, SEEK_END);
+    endBinary = ftell(binary);
+
+
+    fseek(binary, -(sizeof(struct Directory)), SEEK_END);
+    fread(&directory, sizeof(struct Directory), 1, binary);
+    
+    offset = member.pos + member.size;
+    fseek(binary, member.pos, SEEK_SET);
+    MoveData(offset, endBinary - offset, member.pos, binary);
+
+    ftruncate(fdBinary, endBinary - member.size);
+    fseek(binary, -(sizeof(struct Directory) + directory.quantity * sizeof(struct Member)), SEEK_END);
+    isAfter = 0;
+    for(int i = 0; i < directory.quantity; i++)
+    {
+        struct Member tmp;
+
+        fread(&tmp, sizeof(struct Member), 1, binary);
+
+        if(strcmp(member.name, tmp.name) == 0)
+        {
+            structPos = ftell(binary);
+            isAfter = 1;
+            continue;
+        }
+        if(isAfter == 1)
+        {
+            tmp.order--;
+            tmp.pos -= member.size;
+            PrintMember(tmp);
+            fseek(binary, -sizeof(struct Member), SEEK_CUR);
+            fwrite(&tmp, sizeof(struct Member), 1, binary);
+        }
+    }
+
+    fseek(binary, 0, SEEK_END);
+    endBinary = ftell(binary);
+
+    MoveData(structPos, endBinary - structPos, structPos - sizeof(struct Member), binary);
+    ftruncate(fdBinary, endBinary - sizeof(struct Member));
+
+    //The member count decreased, so let's change the directory
+    directory.quantity -= 1;
+    fseek(binary, -sizeof(struct Directory), SEEK_END);
+    fwrite(&directory, sizeof(struct Directory), 1, binary);
 }
 void MoveMembers(char* name1, char* name2, FILE* binary)
 {
