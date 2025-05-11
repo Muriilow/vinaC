@@ -1,8 +1,9 @@
 #include "vinaC.h"
-#include "TADs/lista.h"
-// -i, -p
-//TODO: Implementar funcoes de checagem de erro
 
+/*
+ * Create the .vc file, and write the directory on it.
+ * name: Name of the file;
+*/
 void CreateArchive(char* name)
 {
     FILE* archive;
@@ -24,6 +25,13 @@ void CreateArchive(char* name)
     fclose(archive);
 }
 
+/*
+ * Open the specified file.
+ * It can create the file in case it doesn't exist,
+ * Or stop the program and give it a error.
+ * name: Name of the file;
+ * toCreate: Integer value that control if the archive can be created or no;
+*/
 FILE* OpenArchive(char* name, int toCreate)
 {
     FILE* binaryArchive;
@@ -34,7 +42,7 @@ FILE* OpenArchive(char* name, int toCreate)
         exit(EXIT_FAILURE);
     }
     
-    //Se o arquivo nao existe, crie ele
+    /* If the archive doesn't exist*/
     if(access(name, F_OK) == -1)
     {
         if(toCreate)
@@ -64,7 +72,7 @@ int main(int argc, char **argv)
     FILE* binaryArchive;
     FILE* archive;
 
-    if(argc < 2)
+    if(argc < 3)
     {
         printf("Usage: %s -h to display information about the program\n", argv[0]);
         return 1;
@@ -74,15 +82,18 @@ int main(int argc, char **argv)
         switch (nextOption)
         {
             case 'h':
+                /* Help */
                 ExplainProg();
-                return 0;
+                break;
+
             case 'p':
-                binaryName = strdup(optarg); //Alocacao dinamica
+                /* Insert without compression */
+                binaryName = strdup(optarg);
                 binaryArchive = OpenArchive(binaryName, 1);
 
                 while (optind < argc)
                 {
-                    char arg[64];
+                    char arg[NAME_SIZE];
 
                     strncpy(arg, argv[optind++], sizeof(arg) -1);
                     printf("Processing: %s\n", arg);
@@ -98,21 +109,14 @@ int main(int argc, char **argv)
                 fclose(binaryArchive); 
                 break;
             
-            case 'c':
-                binaryName = strdup(optarg); //Alocacao dinamica
-                binaryArchive = OpenArchive(binaryName, 0);
-
-                ListMembers(binaryArchive);
-                free(binaryName);
-                fclose(binaryArchive); 
-                break;
             case 'i':
-                binaryName = strdup(optarg); //Alocacao dinamica
+                /* Insert with compression */
+                binaryName = strdup(optarg);
                 binaryArchive = OpenArchive(binaryName, 1);
 
                 while (optind < argc)
                 {
-                    char arg[64];
+                    char arg[NAME_SIZE];
 
                     strncpy(arg, argv[optind++], sizeof(arg) -1);
                     printf("Processing: %s\n", arg);
@@ -128,43 +132,34 @@ int main(int argc, char **argv)
                 free(binaryName);
                 fclose(binaryArchive); 
                 break;
-            case 'x':
-                binaryName = strdup(optarg); //Alocacao dinamica
+
+            case 'c':
+                /* List members */
+                binaryName = strdup(optarg);
                 binaryArchive = OpenArchive(binaryName, 0);
-                //No arguments
+
+                ListMembers(binaryArchive);
+                free(binaryName);
+                fclose(binaryArchive); 
+                break;
+
+            case 'x':
+                /* Extract members */
+                binaryName = strdup(optarg);
+                binaryArchive = OpenArchive(binaryName, 0);
+
+                /* No arguments - extract all the members */
                 if (optind == argc)
-                {
                     ExtractAllArchives(binaryArchive);
-                }
                 else 
                 {
                     while (optind < argc)
                     {
-                        struct Member tmp;
-                        int exist; 
-                        char arg[64];
+                        char arg[NAME_SIZE];
 
                         strncpy(arg, argv[optind++], sizeof(arg) -1);
-                        
-                        printf("%s\n", arg);
-                        exist = CheckArchive(arg, binaryArchive, &tmp);
 
-                        if(exist == -1)
-                        {
-                            printf("The file is not on the binary\n");
-                            return 1;
-                        }
-
-                        archive = fopen(arg, "wb+");
-                        if (archive == NULL)
-                        {
-                            fprintf(stderr, "Error creating file");
-                            return 1;
-                        }
-
-                        PrintMember(tmp);
-                        ExtractArchive(tmp, binaryArchive);
-
+                        ExtractArchive(arg, binaryArchive);
                         fclose(archive);
                     }
                 }
@@ -172,13 +167,15 @@ int main(int argc, char **argv)
                 free(binaryName);
                 fclose(binaryArchive);
                 break;
+
             case 'm':
+                /* Move the member */
                 int argCount;
-                char member1[64];
-                char member2[64]; 
+                char member1[NAME_SIZE];
+                char member2[NAME_SIZE]; 
 
                 argCount = 0;
-                binaryName = strdup(optarg); //Alocacao dinamica
+                binaryName = strdup(optarg);
                 binaryArchive = OpenArchive(binaryName, 0);
 
                 if(optind < argc)
@@ -191,24 +188,27 @@ int main(int argc, char **argv)
                         argCount++;
                     }
                 }
-                printf("%s - %s\n", member1, member2);
-                printf("%d\n", argCount);
-
+                
+                /* Move the member to the start */
                 if(argCount == 1)
                     MoveMembers(member1, NULL, binaryArchive);
+
+                /* Move the member1 to be infront of member2 */
                 if(argCount == 2)
                     MoveMembers(member1, member2, binaryArchive);
 
                 free(binaryName);
                 fclose(binaryArchive);
                 break;
+
             case 'r':
-                binaryName = strdup(optarg); //Alocacao dinamica
+                /* Remove the member */
+                binaryName = strdup(optarg);
                 binaryArchive = OpenArchive(binaryName, 0);
 
                 while (optind < argc)
                 {
-                    char arg[64];
+                    char arg[NAME_SIZE];
 
                     strncpy(arg, argv[optind++], sizeof(arg) -1);
                     printf("Processing: %s\n", arg);
@@ -218,6 +218,11 @@ int main(int argc, char **argv)
                 
                 free(binaryName);
                 fclose(binaryArchive); 
+                break;
+
+            default:
+                printf("This option doesn't exist.\n");
+                printf("Usage: %s -h to display information about the program\n", argv[0]);
                 break;
         }
     }

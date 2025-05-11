@@ -10,10 +10,12 @@
 #include <unistd.h>
 #include <time.h>
 
+#define NAME_SIZE 1024
+
+/* The struct that holds the information about the archive */
 struct Member
 {
-    //TODO: pos and order needs to be implemented
-    char name[16];
+    char name[NAME_SIZE];
     uid_t UID;
     int pos;
     unsigned int origSize;
@@ -21,36 +23,66 @@ struct Member
     unsigned int order;
     time_t modifData;
 };
+
+/* The struct that holds the members count */
 struct Directory 
 {
     char name;
     int quantity;
 };
 
-//Start: the first byte to move
-//End: The last byte to move
-//Ref: The byte that will hold the block of information
-//Archive: the archive that will have its data modified
-void MoveData(long int start, long int size, long int pos, FILE* binary);
-
-//Explain what the program does and how to use it.
+/*Printing function that explains what the program does and how to use it*/
 void ExplainProg();
 
-//Insert the arquive content into the binary and its information.
+/*
+ * Insert the archive content into the binary and it's information.
+ * archive: The file that is going to have it's content saved;
+ * binary: The file that is going to save the content of archive;
+ * name: String that has the name of the archive;
+*/
 void InsertNormalArchive(FILE* archive, FILE* binary, char* name);
 
-void InsertArchive(void* buffer, FILE* binary, struct Member member);
-
+/*
+ * Insert the archive content into the binary in a compressed form.
+ * archive: The file that is going to have it's content saved;
+ * binary: The file that is going to save the content of archive;
+ * name: String that has the name of the archive;
+*/
 void InsertCompressedArchive(FILE* archive, FILE* binary, char* name);
 
-//List all the members with its respective informations
+/*
+ * List all the members with its respective informations.
+ * binary: The file that is going to be listed;
+*/
 void ListMembers(FILE* binary);
-int CheckArchive(char* name, FILE* binary, struct Member* member);
 
+/*
+ * Extract all the archives saved on the binary.
+ * binary: The file that have all the members information and content;
+*/
 void ExtractAllArchives(FILE* binary);
-void PrintMember(struct Member member);
-void ExtractArchive(struct Member member, FILE* binary);
 
+/*
+ * Extract the specified archive saved on the binary.
+ * member: The specific member/archive we want to extract;
+ * binary: The file that have the member information and content;
+*/
+void ExtractArchive(char* name, FILE* binary);
+
+/*
+ * Move the content and struct position of member1,
+ * If no more members is specified, member1 will be moved to the start of the binary.
+ * If another member is specified, member1 will be moved after member2.
+ * name1: The member that will be moved;
+ * name2: The member that serve as reference to move the member1;
+ * binary: The binary file that have the information needed;
+*/
 void MoveMembers(char* name1, char* name2, FILE* binary);
+
+/*
+ * Remove the content and struct of the specified member.
+ * name: The name of the member to be removed;
+ * binary: The binary file that have the information needed;
+*/
 void RemoveMember(char* name, FILE* binary);
 #endif
