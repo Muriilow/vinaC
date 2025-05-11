@@ -41,7 +41,7 @@ MoveData(long int start, long int size, long int pos, FILE* binary)
 ```
 A função *MoveFixedData()*, abstrai a complexidade de mover dados em partes.
 
-![QUESTION] Por que?
+> #### Por que?
 > Como definição o temos o tamanho máximo do buffer de escrita limitado por um valor. 
 
 ``` C
@@ -77,7 +77,7 @@ void MoveFixedData(long int start, long int size, long int pos, long int maxSize
 };
 ```
 
-![ALERT] Alerta
+> #### Alerta
 > No meu programa eu "abstraio" funções essenciais como *malloc()* ou *fwrite()*, encapsulando elas em funções externas que checam se essas operações foram realizadas com sucesso, dessa forma eu não preciso fazer um *if* toda vez que checo se uma operação de *malloc* foi realizada com sucesso. 
 
 
