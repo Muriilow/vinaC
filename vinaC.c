@@ -97,6 +97,9 @@ void MoveData(long int start, long int size, long int pos, FILE* binary)
  * */
 void MoveFixedData(long int start, long int size, long int pos, long int maxSize, FILE* binary)
 {
+    if(maxSize <= 0)
+        return;
+
     int end, sizeDiff;
 
     //If we want to move the data backwards 
@@ -113,7 +116,7 @@ void MoveFixedData(long int start, long int size, long int pos, long int maxSize
         return;
     }
     
-    //If we want to move the data forward
+    /* If we want to move the data forward */
     end = start + size;
     sizeDiff = pos - start;
 
@@ -214,7 +217,6 @@ void InsertArchive(void* buffer, FILE* binary, struct Member member)
             fseek(binary, pointerPos + sizeDiff, SEEK_SET);
             SafeWriteFile(&member, sizeof(struct Member), 1, binary);
             
-            origDiff = sizeDiff;
             foundMember = 1;
         }
         else if(foundMember == 1)
@@ -251,7 +253,7 @@ void InsertArchive(void* buffer, FILE* binary, struct Member member)
     pointerPos = ftell(binary);
 
     size = finalPointer - pointerPos;
-
+    
     /* Opening space to put the new member content */
     MoveFixedData(pointerPos,
             sizeof(struct Directory) + memSize * sizeof(struct Member),
@@ -284,7 +286,6 @@ int CheckArchive(char* name, FILE* binary, struct Member *member)
 
     /* Loop through all the members and check if any has the name */
     fseek(binary, -(sizeof(struct Directory) + memSize * sizeof(struct Member)), SEEK_END);
-    pointerPos = ftell(binary);
 
     for(int i = 0; i < memSize; i++)
     {
@@ -398,8 +399,6 @@ void MoveMembers(char* name1, char* name2, FILE* binary)
     endBinary = ftell(binary);
 
     fseek(binary, member1.pos, SEEK_SET);
-    member1Pos = ftell(binary);
-
     buffer = SafeMalloc(member1.size);
     SafeReadFile(buffer, member1.size, 1, binary);
 
@@ -742,7 +741,9 @@ void InsertCompressedArchive(FILE* archive, FILE* binary, char* name)
 
     if(comprData >= stats.st_size)
     {
-        //Armazenar os dados descomprimidos 
+        printf("The compressed version of %s got bigger.\n", name);
+        printf("Let's insert the normal one.\n");
+
         fseek(archive, 0, SEEK_SET);
         InsertNormalArchive(archive, binary, name);
 

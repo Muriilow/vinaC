@@ -9,7 +9,6 @@ void CreateArchive(char* name)
     FILE* archive;
     struct Directory header = {0};
 
-    //Criando os arquivos
     archive = fopen(name, "wb+");
     if (archive == NULL)
     {
@@ -17,7 +16,6 @@ void CreateArchive(char* name)
         return;
     }
     
-    //Colocando o diretorio no arquivo
     header.quantity = 0;
     header.name = 'e';
     fwrite(&header, 1, sizeof(struct Directory), archive);
@@ -96,7 +94,7 @@ int main(int argc, char **argv)
                     char arg[NAME_SIZE];
 
                     strncpy(arg, argv[optind++], sizeof(arg) -1);
-                    printf("Processing: %s\n", arg);
+                    printf("Inserting %s without compression\n", arg);
 
                     archive = fopen(arg, "rb");
                     
@@ -119,7 +117,7 @@ int main(int argc, char **argv)
                     char arg[NAME_SIZE];
 
                     strncpy(arg, argv[optind++], sizeof(arg) -1);
-                    printf("Processing: %s\n", arg);
+                    printf("Inserting %s with compression.\n", arg);
 
                     archive = fopen(arg, "rb");
                     
@@ -158,9 +156,9 @@ int main(int argc, char **argv)
                         char arg[NAME_SIZE];
 
                         strncpy(arg, argv[optind++], sizeof(arg) -1);
+                        printf("Extracting: %s\n", arg);
 
                         ExtractArchive(arg, binaryArchive);
-                        fclose(archive);
                     }
                 }
 
@@ -181,6 +179,8 @@ int main(int argc, char **argv)
                 if(optind < argc)
                 {
                     strncpy(member1, argv[optind++], sizeof(member1) -1);
+                    printf("Moving: %s\n", member1);
+
                     argCount++;
                     if(optind < argc)
                     {
@@ -211,7 +211,7 @@ int main(int argc, char **argv)
                     char arg[NAME_SIZE];
 
                     strncpy(arg, argv[optind++], sizeof(arg) -1);
-                    printf("Processing: %s\n", arg);
+                    printf("Removing: %s\n", arg);
 
                     RemoveMember(arg, binaryArchive);
                 }
